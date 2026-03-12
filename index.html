@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --line: #b9c0cf;
+      --line-strong: #4d5a78;
+      --text: #1a2233;
+      --primary: #2b67f6;
+      --error: #c73333;
+      --fixed: #e8edf9;
+      --selected: #dfe8ff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .app {
+      width: min(100%, 520px);
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button, select {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      background: white;
+      color: var(--text);
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border: 2px solid var(--line-strong);
+      user-select: none;
+    }
+
+    .cell {
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: clamp(1rem, 3.6vw, 1.4rem);
+      cursor: pointer;
+      background: white;
+    }
+
+    .cell.fixed {
+      background: var(--fixed);
+      font-weight: 700;
+    }
+
+    .cell.selected {
+      background: var(--selected);
+    }
+
+    .cell.error {
+      color: var(--error);
+    }
+
+    .cell.block-right { border-right: 2px solid var(--line-strong); }
+    .cell.block-bottom { border-bottom: 2px solid var(--line-strong); }
+
+    .numpad {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .numpad button {
+      min-height: 42px;
+      font-weight: 600;
+    }
+
+    .status {
+      margin-top: 10px;
+      min-height: 1.4em;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 420px) {
+      .numpad { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Sudoku</h1>
+
+    <section class="controls">
+      <div class="row">
+        <label for="difficulty">Vaikeustaso:</label>
+        <select id="difficulty">
+          <option value="easy">Helppo</option>
+          <option value="medium">Keskitaso</option>
+          <option value="hard">Vaikea</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="newGame" class="primary">Uusi peli</button>
+        <button id="check">Tarkista ratkaisu</button>
+        <button id="clear">Tyhjennä ruudukko</button>
+      </div>
+    </section>
+
+    <section id="board" class="board" aria-label="Sudoku-ruudukko"></section>
+
+    <section class="numpad" aria-label="Numeronapit">
+      <button data-number="1">1</button>
+      <button data-number="2">2</button>
+      <button data-number="3">3</button>
+      <button data-number="4">4</button>
+      <button data-number="5">5</button>
+      <button data-number="6">6</button>
+      <button data-number="7">7</button>
+      <button data-number="8">8</button>
+      <button data-number="9">9</button>
+      <button data-number="0">Tyhjennä</button>
+    </section>
+
+    <p id="status" class="status"></p>
+  </main>
+
+  <script>
+    const boardEl = document.getElementById('board');
+    const difficultyEl = document.getElementById('difficulty');
+    const statusEl = document.getElementById('status');
+
+    const cluesByDifficulty = {
+      easy: 40,
+      medium: 32,
+      hard: 26
+    };
+
+    let solution = [];
+    let puzzle = [];
+    let player = [];
+    let selected = null;
+
+    function cloneGrid(grid) {
+      return grid.map(row => [...row]);
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function isValid(grid, row, col, num) {
+      for (let i = 0; i < 9; i++) {
+        if (grid[row][i] === num || grid[i][col] === num) return false;
+      }
+      const startRow = Math.floor(row / 3) * 3;
+      const startCol = Math.floor(col / 3) * 3;
+      for (let r = startRow; r < startRow + 3; r++) {
+        for (let c = startCol; c < startCol + 3; c++) {
+          if (grid[r][c] === num) return false;
+        }
+      }
+      return true;
+    }
+
+    function fillGrid(grid) {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (grid[row][col] === 0) {
+            for (const num of shuffle([1,2,3,4,5,6,7,8,9])) {
+              if (isValid(grid, row, col, num)) {
+                grid[row][col] = num;
+                if (fillGrid(grid)) return true;
+                grid[row][col] = 0;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function countSolutions(grid, limit = 2) {
+      let count = 0;
+
+      function solve() {
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            if (grid[row][col] === 0) {
+              for (let num = 1; num <= 9; num++) {
+                if (isValid(grid, row, col, num)) {
+                  grid[row][col] = num;
+                  solve();
+                  grid[row][col] = 0;
+                  if (count >= limit) return;
+                }
+              }
+              return;
+            }
+          }
+        }
+        count++;
+      }
+
+      solve();
+      return count;
+    }
+
+    function generatePuzzle(clues) {
+      const full = Array.from({ length: 9 }, () => Array(9).fill(0));
+      fillGrid(full);
+
+      const game = cloneGrid(full);
+      const cells = shuffle(Array.from({ length: 81 }, (_, i) => i));
+      let filled = 81;
+
+      for (const idx of cells) {
+        if (filled <= clues) break;
+        const row = Math.floor(idx / 9);
+        const col = idx % 9;
+        const temp = game[row][col];
+        game[row][col] = 0;
+
+        const testGrid = cloneGrid(game);
+        if (countSolutions(testGrid, 2) !== 1) {
+          game[row][col] = temp;
+        } else {
+          filled--;
+        }
+      }
+
+      return { puzzle: game, solution: full };
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const value = player[row][col];
+          const fixed = puzzle[row][col] !== 0;
+          const cell = document.createElement('button');
+          cell.className = 'cell';
+          cell.type = 'button';
+          cell.textContent = value === 0 ? '' : value;
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+
+          if (fixed) cell.classList.add('fixed');
+          if (selected && selected.row === row && selected.col === col) cell.classList.add('selected');
+          if (!fixed && value !== 0 && value !== solution[row][col]) cell.classList.add('error');
+          if (col === 2 || col === 5) cell.classList.add('block-right');
+          if (row === 2 || row === 5) cell.classList.add('block-bottom');
+
+          cell.addEventListener('click', () => {
+            if (fixed) return;
+            selected = { row, col };
+            renderBoard();
+          });
+
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function setCell(number) {
+      if (!selected) return;
+      const { row, col } = selected;
+      if (puzzle[row][col] !== 0) return;
+      player[row][col] = number;
+      renderBoard();
+      setStatus('');
+    }
+
+    function setStatus(msg, good = false) {
+      statusEl.textContent = msg;
+      statusEl.style.color = good ? '#137333' : '#1a2233';
+    }
+
+    function startNewGame() {
+      setStatus('Luodaan peliä...');
+      const difficulty = difficultyEl.value;
+      const clues = cluesByDifficulty[difficulty];
+
+      setTimeout(() => {
+        const generated = generatePuzzle(clues);
+        puzzle = generated.puzzle;
+        solution = generated.solution;
+        player = cloneGrid(puzzle);
+        selected = null;
+        renderBoard();
+        setStatus(`Uusi ${difficulty === 'easy' ? 'helppo' : difficulty === 'medium' ? 'keskitasoinen' : 'vaikea'} peli valmis.`);
+      }, 30);
+    }
+
+    function clearBoard() {
+      player = cloneGrid(puzzle);
+      selected = null;
+      renderBoard();
+      setStatus('Ruudukko tyhjennetty.');
+    }
+
+    function checkSolution() {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (player[row][col] !== solution[row][col]) {
+            setStatus('Ratkaisu ei ole vielä oikein.');
+            renderBoard();
+            return;
+          }
+        }
+      }
+      setStatus('Hienoa! Ratkaisu on oikein ✅', true);
+      renderBoard();
+    }
+
+    document.getElementById('newGame').addEventListener('click', startNewGame);
+    document.getElementById('clear').addEventListener('click', clearBoard);
+    document.getElementById('check').addEventListener('click', checkSolution);
+
+    document.querySelector('.numpad').addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-number]');
+      if (!button) return;
+      const value = Number(button.dataset.number);
+      setCell(value);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!selected) return;
+      if (/^[1-9]$/.test(e.key)) setCell(Number(e.key));
+      if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') setCell(0);
+    });
+
+    startNewGame();
+  </script>
+</body>
+</html>
