@@ -3,7 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sudoku" />
   <title>Sudoku</title>
+
+  <!-- SVG-ikoni favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%232563eb'/%3E%3Cg fill='none' stroke='white' stroke-width='6'%3E%3Crect x='60' y='60' width='392' height='392' rx='12' stroke-width='10'/%3E%3Cline x1='191' y1='60' x2='191' y2='452'/%3E%3Cline x1='321' y1='60' x2='321' y2='452'/%3E%3Cline x1='60' y1='191' x2='452' y2='191'/%3E%3Cline x1='60' y1='321' x2='452' y2='321'/%3E%3C/g%3E%3Cg fill='white' font-family='sans-serif' font-weight='700' text-anchor='middle' dominant-baseline='central'%3E%3Ctext x='125' y='125' font-size='72'%3E5%3C/text%3E%3Ctext x='256' y='256' font-size='72'%3E9%3C/text%3E%3Ctext x='387' y='125' font-size='72'%3E3%3C/text%3E%3Ctext x='125' y='387' font-size='72'%3E7%3C/text%3E%3Ctext x='387' y='387' font-size='72'%3E1%3C/text%3E%3Ctext x='256' y='125' font-size='42' opacity='0.5'%3E8%3C/text%3E%3Ctext x='125' y='256' font-size='42' opacity='0.5'%3E2%3C/text%3E%3C/g%3E%3C/svg%3E" />
+
+  <!-- Apple touch icon (192x192 PNG generoidaan canvasilla) -->
+  <link rel="apple-touch-icon" id="appleTouchIcon" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -181,10 +192,22 @@
       border-radius: 8px;
     }
     .action-bar .active {
-      background: var(--primary-light);
+      background: var(--primary);
       border-color: var(--primary);
-      color: var(--primary);
+      color: white;
+      box-shadow: 0 0 0 2px var(--primary-light);
     }
+
+    .pencil-hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 500;
+      height: 1.2rem;
+      margin-bottom: 4px;
+      transition: opacity 0.15s ease;
+    }
+    .pencil-hint.hidden { opacity: 0; }
 
     .numpad {
       display: grid;
@@ -264,6 +287,8 @@
     <button id="eraseCell">⌫ Tyhjennä</button>
     <button id="resetBoard">↺ Alusta</button>
   </section>
+
+  <div class="pencil-hint hidden" id="pencilHint">Muistiinpanotila päällä — numerot menevät pieninä merkintöinä</div>
 
   <div class="board-wrapper">
     <section id="board" class="board" role="grid" aria-label="Sudoku-pelilauta"></section>
@@ -469,6 +494,7 @@
     });
 
     document.getElementById('togglePencil').classList.toggle('active', pencilMode);
+    document.getElementById('pencilHint').classList.toggle('hidden', !pencilMode);
   }
 
   // --- Generaattori ---
@@ -667,6 +693,111 @@
 
   initDOM();
   startNewGame();
+})();
+</script>
+
+<!-- Web App Manifest & ikoni-generointi -->
+<script>
+(function() {
+  // Piirretään ikoni canvasille ja käytetään sitä manifestissa + apple-touch-iconina
+  function generateIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    const s = size / 512;
+
+    // Tausta
+    ctx.fillStyle = '#2563eb';
+    const r = 96 * s;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(size - r, 0);
+    ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r);
+    ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size);
+    ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ruudukko
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 10 * s;
+    const pad = 60 * s;
+    const grid = (452 - 60) * s;
+
+    // Ulkoreuna
+    ctx.strokeRect(pad, pad, grid, grid);
+
+    // Sisäviivat (paksut 3x3 rajat)
+    ctx.lineWidth = 6 * s;
+    const third = grid / 3;
+    ctx.beginPath();
+    ctx.moveTo(pad + third, pad); ctx.lineTo(pad + third, pad + grid);
+    ctx.moveTo(pad + 2 * third, pad); ctx.lineTo(pad + 2 * third, pad + grid);
+    ctx.moveTo(pad, pad + third); ctx.lineTo(pad + grid, pad + third);
+    ctx.moveTo(pad, pad + 2 * third); ctx.lineTo(pad + grid, pad + 2 * third);
+    ctx.stroke();
+
+    // Numerot
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const cellSize = third / 3;
+    function drawNum(col, row, num, big) {
+      const x = pad + col * third / 3 + cellSize / 2;
+      const y = pad + row * third / 3 + cellSize / 2;
+      ctx.font = (big ? 'bold ' + 72 * s + 'px' : 42 * s + 'px') + ' sans-serif';
+      ctx.globalAlpha = big ? 1 : 0.5;
+      ctx.fillText(num, x, y);
+      ctx.globalAlpha = 1;
+    }
+
+    // Isot numerot (kulmissa ja keskellä)
+    drawNum(1, 1, '5', true);
+    drawNum(4, 4, '9', true);
+    drawNum(7, 1, '3', true);
+    drawNum(1, 7, '7', true);
+    drawNum(7, 7, '1', true);
+    // Pienet (muistiinpanomaiset)
+    drawNum(4, 1, '8', false);
+    drawNum(1, 4, '2', false);
+
+    return c.toDataURL('image/png');
+  }
+
+  // Generoi ikonit
+  const icon192 = generateIcon(192);
+  const icon512 = generateIcon(512);
+
+  // Apple touch icon
+  const appleLink = document.getElementById('appleTouchIcon');
+  if (appleLink) appleLink.href = icon192;
+
+  // Web App Manifest (inline blob)
+  const manifest = {
+    name: 'Sudoku',
+    short_name: 'Sudoku',
+    description: 'Sudoku-peli',
+    start_url: location.href,
+    display: 'standalone',
+    background_color: '#e8ecf1',
+    theme_color: '#2563eb',
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png' },
+      { src: icon512, sizes: '512x512', type: 'image/png' }
+    ]
+  };
+
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const manifestUrl = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = manifestUrl;
+  document.head.appendChild(link);
 })();
 </script>
 </body>
