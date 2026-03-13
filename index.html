@@ -3,118 +3,240 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Moderni Sudoku</title>
+  <title>Sudoku</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f0f2f5;
+      --bg: #e8ecf1;
       --card: #ffffff;
-      --line: #d1d5db;
-      --line-strong: #374151;
-      --text: #1f2937;
-      --primary: #3b82f6;
-      --error: #ef4444;
-      --fixed-bg: #f9fafb;
-      --selected: #dbeafe;
+      --line: #cbd5e1;
+      --line-strong: #1e293b;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --error: #dc2626;
+      --error-bg: #fef2f2;
+      --success: #16a34a;
+      --fixed-bg: #f1f5f9;
+      --selected: #2563eb;
+      --selected-text: #ffffff;
       --related: #eff6ff;
-      --same-num: #bfdbfe;
+      --same-num: #c7d2fe;
+      --conflict: #fecaca;
+      --pencil: #94a3b8;
+      --btn-hover: #f1f5f9;
+      --shadow: 0 8px 32px rgba(0,0,0,0.08);
+      --radius: 12px;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; }
+
     body {
-      margin: 0;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'DM Sans', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      padding: 10px;
+      padding: 16px;
     }
 
     .app {
-      width: min(100%, 500px);
+      width: min(100%, 460px);
       background: var(--card);
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: var(--shadow);
     }
 
-    .header { text-align: center; margin-bottom: 20px; }
-    h1 { margin: 0; font-size: 1.8rem; letter-spacing: -0.025em; }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      background: var(--fixed-bg);
+      padding: 4px 12px;
+      border-radius: 8px;
+    }
 
     .controls {
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
     }
 
-    .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
-
-    button, select {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 8px 16px;
-      font-size: 0.9rem;
+    select, button {
+      font-family: inherit;
+      border: 1.5px solid var(--line);
+      border-radius: var(--radius);
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
       background: white;
+      color: var(--text);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
+    select:hover, button:hover { background: var(--btn-hover); border-color: #94a3b8; }
+    button:active { transform: scale(0.97); }
 
-    button:hover { background: #f3f4f6; }
-    button.primary { background: var(--primary); color: white; border-color: var(--primary); font-weight: 600; }
-    button.primary:hover { opacity: 0.9; }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+    .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+    .spacer { flex: 1; }
+
+    .board-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      margin-bottom: 16px;
+    }
 
     .board {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
       width: 100%;
-      aspect-ratio: 1 / 1;
-      border: 3px solid var(--line-strong);
-      background: var(--line-strong);
+      height: 100%;
+      border: 2.5px solid var(--line-strong);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--line);
       gap: 1px;
     }
 
     .cell {
-      border: none;
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: clamp(1.1rem, 5vw, 1.6rem);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(1rem, 4.5vw, 1.5rem);
+      font-weight: 700;
       cursor: pointer;
       background: white;
-      transition: background 0.1s;
-      outline: none;
+      transition: background 0.1s ease;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    .cell.block-right { border-right: 3px solid var(--line-strong); }
-    .cell.block-bottom { border-bottom: 3px solid var(--line-strong); }
+    .cell.block-right { border-right: 2.5px solid var(--line-strong); }
+    .cell.block-bottom { border-bottom: 2.5px solid var(--line-strong); }
 
-    .cell.fixed { background: var(--fixed-bg); font-weight: 800; color: #111827; }
-    .cell.selected { background: var(--selected) !important; }
+    .cell.fixed { background: var(--fixed-bg); color: var(--line-strong); }
+    .cell.selected { background: var(--selected) !important; color: var(--selected-text) !important; }
     .cell.related { background: var(--related); }
     .cell.same-num { background: var(--same-num); }
-    .cell.error { color: var(--error); }
+    .cell.conflict { background: var(--conflict) !important; }
+    .cell.user-entered { color: var(--primary); }
+
+    .pencil-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+    }
+    .pencil-grid span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.35rem, 1.5vw, 0.55rem);
+      font-weight: 500;
+      color: var(--pencil);
+      line-height: 1;
+    }
+    .cell.selected .pencil-grid span { color: rgba(255,255,255,0.7); }
+
+    .action-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      justify-content: center;
+    }
+    .action-bar button {
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    .action-bar .active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
 
     .numpad {
-      margin-top: 20px;
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
+      gap: 6px;
+    }
+    .numpad button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 10px 0;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .numpad button.completed {
+      opacity: 0.3;
+      pointer-events: none;
     }
 
     .status {
       text-align: center;
-      margin-top: 15px;
-      font-size: 0.9rem;
+      margin-top: 14px;
+      font-size: 0.85rem;
       font-weight: 500;
-      height: 1.2rem;
+      min-height: 1.3rem;
+      transition: all 0.2s ease;
     }
+    .status.success { color: var(--success); }
+    .status.error { color: var(--error); }
+    .status.neutral { color: var(--text-muted); }
 
-    @media (max-width: 400px) {
-      .numpad { grid-template-columns: repeat(5, 1fr); }
-      .numpad button { padding: 12px 5px; }
+    .win-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .win-overlay.visible { opacity: 1; pointer-events: auto; }
+    .win-overlay .emoji { font-size: 3rem; margin-bottom: 8px; }
+    .win-overlay .msg { font-size: 1.2rem; font-weight: 700; color: var(--success); }
+    .win-overlay .sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+    @media (max-width: 380px) {
+      .app { padding: 16px; }
+      .numpad button { padding: 8px 0; font-size: 1rem; }
     }
   </style>
 </head>
@@ -123,104 +245,223 @@
 <main class="app">
   <div class="header">
     <h1>Sudoku</h1>
+    <div class="timer" id="timer">00:00</div>
   </div>
 
   <section class="controls">
-    <div class="row">
-      <select id="difficulty">
-        <option value="easy">Helppo (40)</option>
-        <option value="medium" selected>Keskitaso (32)</option>
-        <option value="hard">Vaikea (24)</option>
-      </select>
-      <button id="newGame" class="primary">Uusi peli</button>
-    </div>
-    <div class="row">
-      <button id="check">Tarkista</button>
-      <button id="clear">Tyhjennä</button>
-    </div>
+    <select id="difficulty">
+      <option value="easy">Helppo (40)</option>
+      <option value="medium" selected>Keskitaso (32)</option>
+      <option value="hard">Vaikea (24)</option>
+    </select>
+    <button id="newGame" class="btn-primary">Uusi peli</button>
+    <span class="spacer"></span>
+    <button id="undo" title="Kumoa">↩ Kumoa</button>
   </section>
 
-  <section id="board" class="board"></section>
-
-  <section class="numpad">
-    <button data-num="1">1</button>
-    <button data-num="2">2</button>
-    <button data-num="3">3</button>
-    <button data-num="4">4</button>
-    <button data-num="5">5</button>
-    <button data-num="6">6</button>
-    <button data-num="7">7</button>
-    <button data-num="8">8</button>
-    <button data-num="9">9</button>
-    <button data-num="0">✖</button>
+  <section class="action-bar">
+    <button id="togglePencil">✏️ Muistiinpanot</button>
+    <button id="eraseCell">⌫ Tyhjennä</button>
+    <button id="resetBoard">↺ Alusta</button>
   </section>
 
-  <div id="status" class="status"></div>
+  <div class="board-wrapper">
+    <section id="board" class="board" role="grid" aria-label="Sudoku-pelilauta"></section>
+    <div class="win-overlay" id="winOverlay">
+      <div class="emoji">🎉</div>
+      <div class="msg">Onnistuit!</div>
+      <div class="sub" id="winTime"></div>
+    </div>
+  </div>
+
+  <section class="numpad" id="numpad"></section>
+  <div id="status" class="status neutral"></div>
 </main>
 
 <script>
+(() => {
   const boardEl = document.getElementById('board');
   const difficultyEl = document.getElementById('difficulty');
   const statusEl = document.getElementById('status');
+  const timerEl = document.getElementById('timer');
+  const winOverlay = document.getElementById('winOverlay');
+  const winTimeEl = document.getElementById('winTime');
+  const numpadEl = document.getElementById('numpad');
 
-  let solution = [], puzzle = [], player = [], selected = null;
-  const cellElements = [];
+  let solution = [], puzzle = [], player = [], pencilMarks = [];
+  let selected = null;
+  let pencilMode = false;
+  let undoStack = [];
+  let timerInterval = null;
+  let seconds = 0;
+  let gameWon = false;
+  let cellElements = [];
 
-  // Alustetaan DOM-solut kerran
+  // --- Apufunktiot ---
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  // --- Ajastin ---
+
+  function startTimer() {
+    stopTimer();
+    seconds = 0;
+    timerEl.textContent = '00:00';
+    timerInterval = setInterval(() => {
+      if (!gameWon) { seconds++; timerEl.textContent = formatTime(seconds); }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  }
+
+  // --- DOM ---
+
   function initDOM() {
     boardEl.innerHTML = '';
+    cellElements.length = 0;
+
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const cell = document.createElement('div');
         cell.className = 'cell';
+        cell.setAttribute('role', 'gridcell');
+        cell.setAttribute('tabindex', '-1');
+        cell.setAttribute('aria-label', `Rivi ${r + 1}, sarake ${c + 1}`);
         if ((c + 1) % 3 === 0 && c < 8) cell.classList.add('block-right');
         if ((r + 1) % 3 === 0 && r < 8) cell.classList.add('block-bottom');
-
-        cell.onclick = () => selectCell(r, c);
+        cell.addEventListener('click', () => selectCell(r, c));
         boardEl.appendChild(cell);
         cellElements.push(cell);
       }
     }
+
+    numpadEl.innerHTML = '';
+    for (let n = 1; n <= 9; n++) {
+      const btn = document.createElement('button');
+      btn.dataset.num = n;
+      btn.textContent = n;
+      btn.addEventListener('click', () => setNum(n));
+      numpadEl.appendChild(btn);
+    }
+    const eraseBtn = document.createElement('button');
+    eraseBtn.dataset.num = '0';
+    eraseBtn.textContent = '✖';
+    eraseBtn.addEventListener('click', () => setNum(0));
+    numpadEl.appendChild(eraseBtn);
   }
 
+  // --- Valinta ja piirto ---
+
   function selectCell(r, c) {
+    if (gameWon) return;
     selected = { r, c };
     updateVisuals();
   }
 
+  function findConflicts() {
+    const conflicts = new Set();
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const val = player[r][c];
+        if (val === 0) continue;
+        for (let i = 0; i < 9; i++) {
+          if (i !== c && player[r][i] === val) { conflicts.add(r * 9 + c); conflicts.add(r * 9 + i); }
+          if (i !== r && player[i][c] === val) { conflicts.add(r * 9 + c); conflicts.add(i * 9 + c); }
+        }
+        const sr = Math.floor(r / 3) * 3, sc = Math.floor(c / 3) * 3;
+        for (let i = 0; i < 3; i++)
+          for (let j = 0; j < 3; j++) {
+            const rr = sr + i, cc = sc + j;
+            if ((rr !== r || cc !== c) && player[rr][cc] === val) { conflicts.add(r * 9 + c); conflicts.add(rr * 9 + cc); }
+          }
+      }
+    }
+    return conflicts;
+  }
+
+  function countDigit(num) {
+    let c = 0;
+    for (let r = 0; r < 9; r++) for (let cc = 0; cc < 9; cc++) if (player[r][cc] === num) c++;
+    return c;
+  }
+
   function updateVisuals() {
     const selVal = selected ? player[selected.r][selected.c] : null;
+    const conflicts = findConflicts();
 
     cellElements.forEach((el, i) => {
-      const r = Math.floor(i / 9);
-      const c = i % 9;
+      const r = Math.floor(i / 9), c = i % 9;
       const val = player[r][c];
+      const isFixed = puzzle[r][c] !== 0;
+      const marks = pencilMarks[r][c];
 
-      el.textContent = val === 0 ? '' : val;
+      // Sisältö
+      if (val !== 0) {
+        el.textContent = val;
+        const old = el.querySelector('.pencil-grid');
+        if (old) old.remove();
+      } else if (marks.size > 0) {
+        el.textContent = '';
+        let grid = el.querySelector('.pencil-grid');
+        if (!grid) {
+          grid = document.createElement('div');
+          grid.className = 'pencil-grid';
+          for (let n = 1; n <= 9; n++) { const s = document.createElement('span'); s.dataset.n = n; grid.appendChild(s); }
+          el.appendChild(grid);
+        }
+        grid.querySelectorAll('span').forEach(s => { const n = parseInt(s.dataset.n); s.textContent = marks.has(n) ? n : ''; });
+      } else {
+        el.textContent = '';
+        const old = el.querySelector('.pencil-grid');
+        if (old) old.remove();
+      }
+
+      // Luokat
       el.className = 'cell';
       if ((c + 1) % 3 === 0 && c < 8) el.classList.add('block-right');
       if ((r + 1) % 3 === 0 && r < 8) el.classList.add('block-bottom');
 
-      if (puzzle[r][c] !== 0) el.classList.add('fixed');
+      if (isFixed) el.classList.add('fixed');
+      else if (val !== 0) el.classList.add('user-entered');
+
       if (selected) {
-        // FIX: selected.col -> selected.c
         if (r === selected.r && c === selected.c) {
           el.classList.add('selected');
-        } else if (
-          r === selected.r ||
-          c === selected.c ||
-          (Math.floor(r / 3) === Math.floor(selected.r / 3) &&
-           Math.floor(c / 3) === Math.floor(selected.c / 3))
-        ) {
+        } else if (r === selected.r || c === selected.c ||
+          (Math.floor(r / 3) === Math.floor(selected.r / 3) && Math.floor(c / 3) === Math.floor(selected.c / 3))) {
           el.classList.add('related');
         }
-        if (val !== 0 && val === selVal) el.classList.add('same-num');
+        if (val !== 0 && val === selVal && !(r === selected.r && c === selected.c)) el.classList.add('same-num');
       }
-      if (val !== 0 && puzzle[r][c] === 0 && val !== solution[r][c]) el.classList.add('error');
+
+      if (conflicts.has(i) && !isFixed) el.classList.add('conflict');
+
+      el.setAttribute('aria-label',
+        `Rivi ${r + 1}, sarake ${c + 1}${val ? ', arvo ' + val : ', tyhjä'}${isFixed ? ', annettu' : ''}${conflicts.has(i) ? ', ristiriita' : ''}`);
     });
+
+    numpadEl.querySelectorAll('button[data-num]').forEach(btn => {
+      const n = parseInt(btn.dataset.num);
+      if (n >= 1 && n <= 9) btn.classList.toggle('completed', countDigit(n) >= 9);
+    });
+
+    document.getElementById('togglePencil').classList.toggle('active', pencilMode);
   }
 
-  // --- Pelilogiikka ---
+  // --- Generaattori ---
 
   function isValid(grid, r, c, num) {
     for (let i = 0; i < 9; i++) if (grid[r][i] === num || grid[i][c] === num) return false;
@@ -233,8 +474,8 @@
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (grid[r][c] === 0) {
-          const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
-          for (let n of nums) {
+          const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+          for (const n of nums) {
             if (isValid(grid, r, c, n)) {
               grid[r][c] = n;
               if (fill(grid)) return true;
@@ -248,7 +489,6 @@
     return true;
   }
 
-  // Uniqueness-tarkistus: laskee ratkaisujen määrän (pysähtyy kun löytyy >1)
   function countSolutions(grid, limit) {
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
@@ -266,96 +506,160 @@
         }
       }
     }
-    return 1; // Kaikki täytetty = yksi ratkaisu löytyi
+    return 1;
+  }
+
+  function generatePuzzle(targetClues) {
+    const full = Array.from({ length: 9 }, () => Array(9).fill(0));
+    fill(full);
+    const sol = full.map(r => [...r]);
+    const puz = full.map(r => [...r]);
+    const toRemove = 81 - targetClues;
+    const indices = shuffle(Array.from({ length: 81 }, (_, i) => i));
+    let removed = 0;
+
+    for (const idx of indices) {
+      if (removed >= toRemove) break;
+      const r = Math.floor(idx / 9), c = idx % 9;
+      if (puz[r][c] === 0) continue;
+      const backup = puz[r][c];
+      puz[r][c] = 0;
+      if (countSolutions(puz.map(row => [...row]), 2) === 1) {
+        removed++;
+      } else {
+        puz[r][c] = backup;
+      }
+    }
+    return { solution: sol, puzzle: puz, clues: 81 - removed };
   }
 
   function startNewGame() {
-    statusEl.textContent = 'Generoidaan...';
-    statusEl.style.color = ''; // FIX: nollataan väri
+    gameWon = false;
+    winOverlay.classList.remove('visible');
+    setStatus('Generoidaan...', 'neutral');
+
     setTimeout(() => {
-      const full = Array.from({ length: 9 }, () => Array(9).fill(0));
-      fill(full);
-      solution = full.map(r => [...r]);
-
-      // FIX: vihjemäärät vastaavat nyt valikon tekstejä
-      const clues = { easy: 40, medium: 32, hard: 24 }[difficultyEl.value];
-      const toRemove = 81 - clues;
-
-      puzzle = full.map(r => [...r]);
-
-      // FIX: sekoitettu indeksilista – ei turhia osumia jo tyhjennettyihin ruutuihin
-      const indices = [];
-      for (let i = 0; i < 81; i++) indices.push(i);
-      shuffle(indices);
-
-      let removed = 0;
-      for (let idx = 0; idx < indices.length && removed < toRemove; idx++) {
-        const r = Math.floor(indices[idx] / 9);
-        const c = indices[idx] % 9;
-        const backup = puzzle[r][c];
-        puzzle[r][c] = 0;
-
-        // FIX: uniqueness-tarkistus – varmistetaan että ratkaisu pysyy uniikkina
-        if (countSolutions(puzzle.map(row => [...row]), 2) === 1) {
-          removed++;
-        } else {
-          puzzle[r][c] = backup; // Palautetaan jos useampi ratkaisu
-        }
+      const targetClues = { easy: 40, medium: 32, hard: 24 }[difficultyEl.value];
+      let result;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        result = generatePuzzle(targetClues);
+        if (result.clues <= targetClues + 2) break;
       }
 
+      solution = result.solution;
+      puzzle = result.puzzle;
       player = puzzle.map(r => [...r]);
+      pencilMarks = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
       selected = null;
+      undoStack = [];
+      pencilMode = false;
+
+      startTimer();
       updateVisuals();
-      statusEl.textContent = '';
+      setStatus('', 'neutral');
     }, 50);
   }
 
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+  // --- Syöttö ---
+
+  function pushUndo() {
+    undoStack.push({
+      player: player.map(r => [...r]),
+      pencil: pencilMarks.map(r => r.map(s => new Set(s)))
+    });
+    if (undoStack.length > 80) undoStack.shift();
+  }
+
+  function undo() {
+    if (undoStack.length === 0 || gameWon) return;
+    const prev = undoStack.pop();
+    player = prev.player;
+    pencilMarks = prev.pencil;
+    updateVisuals();
+  }
+
+  function setNum(n) {
+    if (!selected || gameWon) return;
+    const { r, c } = selected;
+    if (puzzle[r][c] !== 0) return;
+
+    pushUndo();
+
+    if (pencilMode && n !== 0) {
+      player[r][c] = 0;
+      const marks = pencilMarks[r][c];
+      if (marks.has(n)) marks.delete(n); else marks.add(n);
+    } else {
+      player[r][c] = n;
+      pencilMarks[r][c] = new Set();
+      if (n !== 0) {
+        for (let i = 0; i < 9; i++) { pencilMarks[r][i].delete(n); pencilMarks[i][c].delete(n); }
+        const sr = Math.floor(r / 3) * 3, sc = Math.floor(c / 3) * 3;
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) pencilMarks[sr + i][sc + j].delete(n);
+      }
+    }
+
+    updateVisuals();
+    checkAutoWin();
+  }
+
+  function eraseCell() {
+    if (!selected || gameWon) return;
+    if (puzzle[selected.r][selected.c] !== 0) return;
+    pushUndo();
+    player[selected.r][selected.c] = 0;
+    pencilMarks[selected.r][selected.c] = new Set();
+    updateVisuals();
+  }
+
+  function checkAutoWin() {
+    if (!player.every((row) => row.every((v) => v !== 0))) return;
+    if (findConflicts().size === 0) {
+      gameWon = true;
+      stopTimer();
+      winTimeEl.textContent = `Aika: ${formatTime(seconds)}`;
+      setTimeout(() => winOverlay.classList.add('visible'), 300);
+      setStatus('Loistavaa! Ratkaisit sudokun! 🎉', 'success');
     }
   }
 
-  // --- Kontrollit ---
+  function setStatus(text, type) {
+    statusEl.textContent = text;
+    statusEl.className = 'status ' + (type || 'neutral');
+  }
+
+  // --- Näppäimistö ---
 
   window.addEventListener('keydown', (e) => {
-    if (!selected) return;
-    if (e.key >= '1' && e.key <= '9') setNum(parseInt(e.key));
-    if (e.key === '0' || e.key === 'Backspace' || e.key === 'Delete') setNum(0);
-
+    if (gameWon || !selected) return;
+    if (e.key >= '1' && e.key <= '9') { e.preventDefault(); setNum(parseInt(e.key)); }
+    if (e.key === '0' || e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); setNum(0); }
     if (e.key === 'ArrowUp') { e.preventDefault(); selectCell(Math.max(0, selected.r - 1), selected.c); }
     if (e.key === 'ArrowDown') { e.preventDefault(); selectCell(Math.min(8, selected.r + 1), selected.c); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); selectCell(selected.r, Math.max(0, selected.c - 1)); }
     if (e.key === 'ArrowRight') { e.preventDefault(); selectCell(selected.r, Math.min(8, selected.c + 1)); }
+    if (e.key === 'p' || e.key === 'P') { pencilMode = !pencilMode; updateVisuals(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
   });
 
-  function setNum(n) {
-    if (selected && puzzle[selected.r][selected.c] === 0) {
-      player[selected.r][selected.c] = n;
-      updateVisuals();
-    }
-  }
+  // --- Nappikontrollit ---
 
-  document.querySelector('.numpad').onclick = (e) => {
-    if (e.target.dataset.num) setNum(parseInt(e.target.dataset.num));
-  };
-
-  document.getElementById('newGame').onclick = startNewGame;
-  document.getElementById('clear').onclick = () => {
+  document.getElementById('newGame').addEventListener('click', startNewGame);
+  document.getElementById('undo').addEventListener('click', undo);
+  document.getElementById('togglePencil').addEventListener('click', () => { pencilMode = !pencilMode; updateVisuals(); });
+  document.getElementById('eraseCell').addEventListener('click', eraseCell);
+  document.getElementById('resetBoard').addEventListener('click', () => {
+    if (gameWon) return;
+    pushUndo();
     player = puzzle.map(r => [...r]);
-    statusEl.textContent = '';
-    statusEl.style.color = ''; // FIX: nollataan väri myös tyhjennettäessä
+    pencilMarks = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
+    setStatus('', 'neutral');
     updateVisuals();
-  };
-  document.getElementById('check').onclick = () => {
-    const win = player.every((row, r) => row.every((v, c) => v === solution[r][c]));
-    statusEl.textContent = win ? 'Loistavaa! Kaikki oikein! 🎉' : 'Vielä löytyy virheitä tai tyhjiä ruutuja.';
-    statusEl.style.color = win ? 'green' : 'red';
-  };
+  });
 
   initDOM();
   startNewGame();
+})();
 </script>
 </body>
 </html>
