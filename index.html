@@ -250,9 +250,9 @@
 
   <section class="controls">
     <select id="difficulty">
-      <option value="easy">Helppo (40)</option>
-      <option value="medium" selected>Keskitaso (32)</option>
-      <option value="hard">Vaikea (24)</option>
+      <option value="easy">Helppo</option>
+      <option value="medium" selected>Keskitaso</option>
+      <option value="hard">Vaikea</option>
     </select>
     <button id="newGame" class="btn-primary">Uusi peli</button>
     <span class="spacer"></span>
@@ -455,7 +455,17 @@
 
     numpadEl.querySelectorAll('button[data-num]').forEach(btn => {
       const n = parseInt(btn.dataset.num);
-      if (n >= 1 && n <= 9) btn.classList.toggle('completed', countDigit(n) >= 9);
+      if (n >= 1 && n <= 9) {
+        const count = countDigit(n);
+        // Himmennetään vasta kun 9 kpl eikä yksikään ole ristiriidassa
+        let hasConflict = false;
+        if (count >= 9) {
+          for (let r = 0; r < 9 && !hasConflict; r++)
+            for (let c = 0; c < 9 && !hasConflict; c++)
+              if (player[r][c] === n && conflicts.has(r * 9 + c)) hasConflict = true;
+        }
+        btn.classList.toggle('completed', count >= 9 && !hasConflict);
+      }
     });
 
     document.getElementById('togglePencil').classList.toggle('active', pencilMode);
@@ -586,7 +596,8 @@
     pushUndo();
 
     if (pencilMode && n !== 0) {
-      player[r][c] = 0;
+      // Jos ruudussa on jo varsinainen arvo, pencil-tila ei tee mitään
+      if (player[r][c] !== 0) return;
       const marks = pencilMarks[r][c];
       if (marks.has(n)) marks.delete(n); else marks.add(n);
     } else {
@@ -606,10 +617,7 @@
   function eraseCell() {
     if (!selected || gameWon) return;
     if (puzzle[selected.r][selected.c] !== 0) return;
-    pushUndo();
-    player[selected.r][selected.c] = 0;
-    pencilMarks[selected.r][selected.c] = new Set();
-    updateVisuals();
+    setNum(0);
   }
 
   function checkAutoWin() {
