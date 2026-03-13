@@ -15,8 +15,8 @@
       --error: #ef4444;
       --fixed-bg: #f9fafb;
       --selected: #dbeafe;
-      --related: #eff6ff; /* Korostus samalle riville/sarakkeelle */
-      --same-num: #bfdbfe; /* Korostus samoille numeroille */
+      --related: #eff6ff;
+      --same-num: #bfdbfe;
     }
 
     * { box-sizing: border-box; }
@@ -73,7 +73,7 @@
       aspect-ratio: 1 / 1;
       border: 3px solid var(--line-strong);
       background: var(--line-strong);
-      gap: 1px; /* Tämä luo ohuet viivat solujen välille */
+      gap: 1px;
     }
 
     .cell {
@@ -88,7 +88,6 @@
       outline: none;
     }
 
-    /* Paksummat reunat 3x3 blokeille */
     .cell.block-right { border-right: 3px solid var(--line-strong); }
     .cell.block-bottom { border-bottom: 3px solid var(--line-strong); }
 
@@ -163,7 +162,7 @@
   const boardEl = document.getElementById('board');
   const difficultyEl = document.getElementById('difficulty');
   const statusEl = document.getElementById('status');
-  
+
   let solution = [], puzzle = [], player = [], selected = null;
   const cellElements = [];
 
@@ -176,7 +175,7 @@
         cell.className = 'cell';
         if ((c + 1) % 3 === 0 && c < 8) cell.classList.add('block-right');
         if ((r + 1) % 3 === 0 && r < 8) cell.classList.add('block-bottom');
-        
+
         cell.onclick = () => selectCell(r, c);
         boardEl.appendChild(cell);
         cellElements.push(cell);
@@ -196,20 +195,23 @@
       const r = Math.floor(i / 9);
       const c = i % 9;
       const val = player[r][c];
-      
+
       el.textContent = val === 0 ? '' : val;
-      el.className = 'cell'; // Reset
+      el.className = 'cell';
       if ((c + 1) % 3 === 0 && c < 8) el.classList.add('block-right');
       if ((r + 1) % 3 === 0 && r < 8) el.classList.add('block-bottom');
-      
+
       if (puzzle[r][c] !== 0) el.classList.add('fixed');
       if (selected) {
-        if (selected.r === r && selected.col === c) {
-           // Skip internal checks for speed if needed
-        }
-        // Korostukset
-        if (r === selected.r && c === selected.c) el.classList.add('selected');
-        else if (r === selected.r || c === selected.c || (Math.floor(r/3) === Math.floor(selected.r/3) && Math.floor(c/3) === Math.floor(selected.c/3))) {
+        // FIX: selected.col -> selected.c
+        if (r === selected.r && c === selected.c) {
+          el.classList.add('selected');
+        } else if (
+          r === selected.r ||
+          c === selected.c ||
+          (Math.floor(r / 3) === Math.floor(selected.r / 3) &&
+           Math.floor(c / 3) === Math.floor(selected.c / 3))
+        ) {
           el.classList.add('related');
         }
         if (val !== 0 && val === selVal) el.classList.add('same-num');
@@ -218,12 +220,12 @@
     });
   }
 
-  // --- Pelilogiikka (Samat kuin sinulla, mutta optimoituna) ---
-  
+  // --- Pelilogiikka ---
+
   function isValid(grid, r, c, num) {
     for (let i = 0; i < 9; i++) if (grid[r][i] === num || grid[i][c] === num) return false;
     const sr = Math.floor(r / 3) * 3, sc = Math.floor(c / 3) * 3;
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (grid[sr+i][sc+j] === num) return false;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (grid[sr + i][sc + j] === num) return false;
     return true;
   }
 
@@ -231,7 +233,7 @@
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (grid[r][c] === 0) {
-          const nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+          const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
           for (let n of nums) {
             if (isValid(grid, r, c, n)) {
               grid[r][c] = n;
@@ -246,31 +248,73 @@
     return true;
   }
 
+  // Uniqueness-tarkistus: laskee ratkaisujen määrän (pysähtyy kun löytyy >1)
+  function countSolutions(grid, limit) {
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (grid[r][c] === 0) {
+          let count = 0;
+          for (let n = 1; n <= 9; n++) {
+            if (isValid(grid, r, c, n)) {
+              grid[r][c] = n;
+              count += countSolutions(grid, limit - count);
+              grid[r][c] = 0;
+              if (count >= limit) return count;
+            }
+          }
+          return count;
+        }
+      }
+    }
+    return 1; // Kaikki täytetty = yksi ratkaisu löytyi
+  }
+
   function startNewGame() {
     statusEl.textContent = 'Generoidaan...';
+    statusEl.style.color = ''; // FIX: nollataan väri
     setTimeout(() => {
-      const full = Array.from({length:9}, () => Array(9).fill(0));
+      const full = Array.from({ length: 9 }, () => Array(9).fill(0));
       fill(full);
       solution = full.map(r => [...r]);
-      
-      const clues = {easy: 42, medium: 32, hard: 24}[difficultyEl.value];
+
+      // FIX: vihjemäärät vastaavat nyt valikon tekstejä
+      const clues = { easy: 40, medium: 32, hard: 24 }[difficultyEl.value];
+      const toRemove = 81 - clues;
+
       puzzle = full.map(r => [...r]);
+
+      // FIX: sekoitettu indeksilista – ei turhia osumia jo tyhjennettyihin ruutuihin
+      const indices = [];
+      for (let i = 0; i < 81; i++) indices.push(i);
+      shuffle(indices);
+
       let removed = 0;
-      let attempts = 0;
-      while (removed < (81 - clues) && attempts < 150) {
-        let r = Math.floor(Math.random()*9), c = Math.floor(Math.random()*9);
-        if (puzzle[r][c] !== 0) {
-          puzzle[r][c] = 0;
+      for (let idx = 0; idx < indices.length && removed < toRemove; idx++) {
+        const r = Math.floor(indices[idx] / 9);
+        const c = indices[idx] % 9;
+        const backup = puzzle[r][c];
+        puzzle[r][c] = 0;
+
+        // FIX: uniqueness-tarkistus – varmistetaan että ratkaisu pysyy uniikkina
+        if (countSolutions(puzzle.map(row => [...row]), 2) === 1) {
           removed++;
+        } else {
+          puzzle[r][c] = backup; // Palautetaan jos useampi ratkaisu
         }
-        attempts++;
       }
-      
+
       player = puzzle.map(r => [...r]);
       selected = null;
       updateVisuals();
       statusEl.textContent = '';
     }, 50);
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
   }
 
   // --- Kontrollit ---
@@ -279,12 +323,11 @@
     if (!selected) return;
     if (e.key >= '1' && e.key <= '9') setNum(parseInt(e.key));
     if (e.key === '0' || e.key === 'Backspace' || e.key === 'Delete') setNum(0);
-    
-    // Nuolinäppäimet
-    if (e.key === 'ArrowUp') selectCell(Math.max(0, selected.r - 1), selected.c);
-    if (e.key === 'ArrowDown') selectCell(Math.min(8, selected.r + 1), selected.c);
-    if (e.key === 'ArrowLeft') selectCell(selected.r, Math.max(0, selected.c - 1));
-    if (e.key === 'ArrowRight') selectCell(selected.r, Math.min(8, selected.c + 1));
+
+    if (e.key === 'ArrowUp') { e.preventDefault(); selectCell(Math.max(0, selected.r - 1), selected.c); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); selectCell(Math.min(8, selected.r + 1), selected.c); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); selectCell(selected.r, Math.max(0, selected.c - 1)); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); selectCell(selected.r, Math.min(8, selected.c + 1)); }
   });
 
   function setNum(n) {
@@ -301,6 +344,8 @@
   document.getElementById('newGame').onclick = startNewGame;
   document.getElementById('clear').onclick = () => {
     player = puzzle.map(r => [...r]);
+    statusEl.textContent = '';
+    statusEl.style.color = ''; // FIX: nollataan väri myös tyhjennettäessä
     updateVisuals();
   };
   document.getElementById('check').onclick = () => {
