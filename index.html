@@ -15,8 +15,6 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.svg">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #e8ecf1;
@@ -45,7 +43,7 @@
     * { box-sizing: border-box; margin: 0; }
 
     body {
-      font-family: 'DM Sans', system-ui, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
@@ -75,7 +73,7 @@
       letter-spacing: -0.03em;
     }
     .timer {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
       font-size: 0.95rem;
       color: var(--text-muted);
       background: var(--fixed-bg);
@@ -139,7 +137,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
       font-size: clamp(1rem, 4.5vw, 1.5rem);
       font-weight: 700;
       cursor: pointer;
@@ -215,7 +213,7 @@
       gap: 6px;
     }
     .numpad button {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
       font-size: 1.1rem;
       font-weight: 700;
       padding: 10px 0;
@@ -472,7 +470,7 @@
         if (val !== 0 && val === selVal && !(r === selected.r && c === selected.c)) el.classList.add('same-num');
       }
 
-      if (conflicts.has(i) && !isFixed) el.classList.add('conflict');
+      if (conflicts.has(i)) el.classList.add('conflict');
 
       el.setAttribute('aria-label',
         `Rivi ${r + 1}, sarake ${c + 1}${val ? ', arvo ' + val : ', tyhjä'}${isFixed ? ', annettu' : ''}${conflicts.has(i) ? ', ristiriita' : ''}`);
@@ -619,14 +617,14 @@
     const { r, c } = selected;
     if (puzzle[r][c] !== 0) return;
 
-    pushUndo();
-
     if (pencilMode && n !== 0) {
       // Jos ruudussa on jo varsinainen arvo, pencil-tila ei tee mitään
       if (player[r][c] !== 0) return;
+      pushUndo();
       const marks = pencilMarks[r][c];
       if (marks.has(n)) marks.delete(n); else marks.add(n);
     } else {
+      pushUndo();
       player[r][c] = n;
       pencilMarks[r][c] = new Set();
       if (n !== 0) {
