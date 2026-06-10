@@ -316,6 +316,7 @@
   let pencilMode = false;
   let undoStack = [];
   let timerInterval = null;
+  let timerStart = 0;
   let seconds = 0;
   let gameWon = false;
   let cellElements = [];
@@ -337,18 +338,29 @@
 
   // --- Ajastin ---
 
+  function updateTimerDisplay() {
+    seconds = Math.floor((Date.now() - timerStart) / 1000);
+    timerEl.textContent = formatTime(seconds);
+  }
+
   function startTimer() {
     stopTimer();
+    timerStart = Date.now();
     seconds = 0;
     timerEl.textContent = '00:00';
     timerInterval = setInterval(() => {
-      if (!gameWon) { seconds++; timerEl.textContent = formatTime(seconds); }
+      if (!gameWon) updateTimerDisplay();
     }, 1000);
   }
 
   function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   }
+
+  // Päivitä aika heti kun sovellus palaa taustalta (Chrome throttlaa intervallit)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && timerInterval && !gameWon) updateTimerDisplay();
+  });
 
   // --- DOM ---
 
@@ -389,7 +401,7 @@
   // --- Valinta ja piirto ---
 
   function selectCell(r, c) {
-    if (gameWon) return;
+    if (gameWon || !player.length) return;
     selected = { r, c };
     updateVisuals();
   }
@@ -437,9 +449,9 @@
         const old = el.querySelector('.pencil-grid');
         if (old) old.remove();
       } else if (marks.size > 0) {
-        el.textContent = '';
         let grid = el.querySelector('.pencil-grid');
         if (!grid) {
+          el.textContent = '';
           grid = document.createElement('div');
           grid.className = 'pencil-grid';
           for (let n = 1; n <= 9; n++) { const s = document.createElement('span'); s.dataset.n = n; grid.appendChild(s); }
@@ -624,6 +636,8 @@
       const marks = pencilMarks[r][c];
       if (marks.has(n)) marks.delete(n); else marks.add(n);
     } else {
+      // Ei turhaa undo-askelta jos tyhjennetään jo tyhjä ruutu ilman merkintöjä
+      if (n === 0 && player[r][c] === 0 && pencilMarks[r][c].size === 0) return;
       pushUndo();
       player[r][c] = n;
       pencilMarks[r][c] = new Set();
@@ -647,6 +661,7 @@
   function checkAutoWin() {
     if (!player.every((row) => row.every((v) => v !== 0))) return;
     if (findConflicts().size === 0) {
+      updateTimerDisplay();
       gameWon = true;
       stopTimer();
       winTimeEl.textContent = `Aika: ${formatTime(seconds)}`;
@@ -663,6 +678,7 @@
   // --- Näppäimistö ---
 
   window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'SELECT') return;
     if (gameWon || !selected) return;
     if (e.key >= '1' && e.key <= '9') { e.preventDefault(); setNum(parseInt(e.key)); }
     if (e.key === '0' || e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); setNum(0); }
@@ -671,7 +687,7 @@
     if (e.key === 'ArrowLeft') { e.preventDefault(); selectCell(selected.r, Math.max(0, selected.c - 1)); }
     if (e.key === 'ArrowRight') { e.preventDefault(); selectCell(selected.r, Math.min(8, selected.c + 1)); }
     if (e.key === 'p' || e.key === 'P') { pencilMode = !pencilMode; updateVisuals(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
   });
 
   // --- Nappikontrollit ---
@@ -681,7 +697,7 @@
   document.getElementById('togglePencil').addEventListener('click', () => { pencilMode = !pencilMode; updateVisuals(); });
   document.getElementById('eraseCell').addEventListener('click', eraseCell);
   document.getElementById('resetBoard').addEventListener('click', () => {
-    if (gameWon) return;
+    if (gameWon || !player.length) return;
     pushUndo();
     player = puzzle.map(r => [...r]);
     pencilMarks = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
